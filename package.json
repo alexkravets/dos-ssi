@@ -1,0 +1,46 @@
+{
+  "name": "dos-ssi",
+  "version": "1.0.0",
+  "description": "Helpers for @kravc/dos library to authorize SSI users and issue verifiable credentials as operation response.",
+  "keywords": [
+    "SSI",
+    "Security",
+    "Identity",
+    "DID Authorization",
+    "Verifiable Credentials"
+  ],
+  "main": "src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/alexkravets/dos-ssi.git"
+  },
+  "directories": {
+    "src": "src"
+  },
+  "scripts": {
+    "test": "eslint src/ examples/ && NODE_PATH=./ nyc mocha \"./src/**/*.spec.js\""
+  },
+  "bin": {
+    "seed": "bin/seed.js"
+  },
+  "author": "Alexander Kravets <a@kra.vc>",
+  "license": "ISC",
+  "dependencies": {
+    "@kravc/dos": "^1.2.0",
+    "@kravc/identity": "^1.0.0",
+    "@kravc/schema": "^2.0.0",
+    "canonicalize": "^1.0.3"
+  },
+  "devDependencies": {
+    "chai": "^4.2.0",
+    "eslint": "^7.12.1",
+    "lodash.keyby": "^4.6.0",
+    "mocha": "^8.2.1",
+    "nyc": "^15.1.0",
+    "ulid": "^2.3.0"
+  },
+  "nyc": {
+    "include": "src",
+    "exclude": "**/*.spec.js"
+  }
+}

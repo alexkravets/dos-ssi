@@ -1,0 +1,17 @@
+id:
+  description: >-
+    Account ID
+  format:   'did'
+  required: true
+
+username:
+  description: >-
+    Username, should be unique within a domain
+  format:   'slug'
+  required: true
+
+createdAt:
+  description: >-
+    Date and time when account has been created
+  format:    'date-time'
+  required:  true
