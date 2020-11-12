@@ -1,5 +1,5 @@
 {
-  "name": "dos-ssi",
+  "name": "@kravc/dos-ssi",
   "version": "1.0.0",
   "description": "Helpers for @kravc/dos library to authorize SSI users and issue verifiable credentials as operation response.",
   "keywords": [
