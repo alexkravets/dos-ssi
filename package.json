@@ -1,6 +1,6 @@
 {
   "name": "@kravc/dos-ssi",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Helpers for @kravc/dos library to authorize SSI users and issue verifiable credentials as operation response.",
   "keywords": [
     "SSI",
@@ -26,9 +26,9 @@
   "author": "Alexander Kravets <a@kra.vc>",
   "license": "ISC",
   "dependencies": {
-    "@kravc/dos": "^1.2.0",
+    "@kravc/dos": "^1.2.2",
     "@kravc/identity": "^1.0.0",
-    "@kravc/schema": "^2.0.0",
+    "@kravc/schema": "^2.2.0",
     "canonicalize": "^1.0.3"
   },
   "devDependencies": {

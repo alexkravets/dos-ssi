@@ -1,8 +1,7 @@
 'use strict'
 
-const { Identity }    = require('@kravc/identity')
-const canonicalize    = require('canonicalize')
-const getReferenceIds = require('./getReferenceIds')
+const { Identity } = require('@kravc/identity')
+const canonicalize = require('canonicalize')
 const { Schema, CredentialFactory } = require('@kravc/schema')
 
 const issueCredential = async (payload, options) => {
@@ -16,6 +15,7 @@ const issueCredential = async (payload, options) => {
     credentialTypeUri
   } = options
 
+  const referenceIds   = validator.getReferenceIds(schema.id)
   const { schemasMap } = validator
 
   const { $ref } = schema.source.data
@@ -30,8 +30,7 @@ const issueCredential = async (payload, options) => {
 
   }
 
-  const rootSchema       = new Schema(source, 'CredentialSubject')
-  const referenceIds     = getReferenceIds(rootSchema, schemasMap)
+  const rootSchema = new Schema(source, 'CredentialSubject')
   /* istanbul ignore next */
   const referenceSchemas = referenceIds.map(id => schemasMap[id])
 
