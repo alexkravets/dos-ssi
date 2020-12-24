@@ -16,11 +16,9 @@ const verifyChallenge = (context, payload) => {
   const parameters = { ...query, mutation }
 
   const challenge = getParametersDigest(parameters)
-  const { vp: presentation } = payload
+  const isChallengeOk = challenge === payload.vp.proof.challenge
 
-  const isChallengeOk = challenge === presentation.proof.challenge
-
-  return [ isChallengeOk, presentation ]
+  return isChallengeOk
 }
 
 class DidAuthorization {
@@ -82,7 +80,7 @@ class DidAuthorization {
       return { isAuthorized: false, error }
     }
 
-    const [ isChallengeOk, presentation ] = this._verifyChallenge(context, payload)
+    const isChallengeOk = this._verifyChallenge(context, payload)
 
     if (!isChallengeOk) {
       const error = new UnauthorizedError('Challenge mismatch')
@@ -97,6 +95,7 @@ class DidAuthorization {
       return { isAuthorized: false, error }
     }
 
+    const presentation   = payload.vp
     const { holder: id } = presentation
 
     return { isAuthorized: true, id, accountId: id, presentation }
