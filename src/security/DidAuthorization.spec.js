@@ -12,10 +12,14 @@ const exec = execute(service)
 const CLIENT_SEED = '72ff16adfaa40ccdf8a8e5e0a53612c621da522d2e49bc4e352dece23f30bc63'
 
 describe('DidAuthorization', () => {
-  describe('createRequirement(verificationMethod = () => true)', () => {
-    it('creates requirement with default verification method', async () => {
+  describe('createRequirement(options = {})', () => {
+    it('creates requirement with default verification methods', async () => {
       const requirement = DidAuthorization.createRequirement()
-      expect(requirement.DidAuthorization.verificationMethod()).to.be.true
+
+      const options = requirement.DidAuthorization
+      const requirementInstance = new requirement.DidAuthorization.klass(options)
+
+      expect(requirementInstance._verifyAccess()).to.be.true
     })
   })
 

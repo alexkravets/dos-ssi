@@ -9,8 +9,22 @@ const {
   UnauthorizedError
 } = errors
 
+const verifyAccess = () => true
+
+const verifyChallenge = (context, payload) => {
+  const { query, mutation } = context
+  const parameters = { ...query, mutation }
+
+  const challenge = getParametersDigest(parameters)
+  const { vp: presentation } = payload
+
+  const isChallengeOk = challenge === presentation.proof.challenge
+
+  return [ isChallengeOk, presentation ]
+}
+
 class DidAuthorization {
-  static createRequirement(verificationMethod = () => true) {
+  static createRequirement(options = {}) {
     const { name } = this
 
     return {
@@ -22,7 +36,7 @@ class DidAuthorization {
           description: 'TODO: Add a link to presentation JWT example.'
         },
         klass: this,
-        verificationMethod
+        ...options
       }
     }
   }
@@ -40,8 +54,12 @@ class DidAuthorization {
     }
   }
 
-  constructor({ verificationMethod }) {
-    this._verificationMethod = verificationMethod
+  constructor({
+    accessVerificationMethod    = verifyAccess,
+    challengeVerificationMethod = verifyChallenge
+  }) {
+    this._verifyAccess    = accessVerificationMethod
+    this._verifyChallenge = challengeVerificationMethod
   }
 
   async verify(context) {
@@ -64,12 +82,7 @@ class DidAuthorization {
       return { isAuthorized: false, error }
     }
 
-    const { query, mutation } = context
-    const parameters = { ...query, mutation }
-    const challenge  = getParametersDigest(parameters)
-
-    const { vp: presentation } = payload
-    const isChallengeOk = challenge === presentation.proof.challenge
+    const [ isChallengeOk, presentation ] = this._verifyChallenge(context, payload)
 
     if (!isChallengeOk) {
       const error = new UnauthorizedError('Challenge mismatch')
@@ -77,7 +90,7 @@ class DidAuthorization {
       return { isAuthorized: false, error }
     }
 
-    const isAuthorized = this._verificationMethod(payload)
+    const isAuthorized = this._verifyAccess(payload)
 
     if (!isAuthorized) {
       const error = new AccessDeniedError()

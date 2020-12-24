@@ -13,9 +13,11 @@ const options = {
 
 class CreateAccount extends Credential(Create(Account), options) {
   static get security() {
-    const requirement = security.DidAuthorization.createRequirement(({ vp }) => {
+    const accessVerificationMethod = ({ vp }) => {
       return vp.proof.domain === 'example.com'
-    })
+    }
+
+    const requirement = security.DidAuthorization.createRequirement({ accessVerificationMethod })
 
     return [ requirement ]
   }
