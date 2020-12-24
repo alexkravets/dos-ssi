@@ -15,7 +15,7 @@ const issueCredential = async (payload, options) => {
     credentialTypeUri
   } = options
 
-  const referenceIds   = validator.getReferenceIds(schema.id)
+  let referenceIds     = validator.getReferenceIds(schema.id)
   const { schemasMap } = validator
 
   const { $ref } = schema.source.data
@@ -24,6 +24,7 @@ const issueCredential = async (payload, options) => {
 
   if ($ref) {
     source = schemasMap[$ref]
+    referenceIds = referenceIds.filter(id => id !== $ref)
 
   } else {
     source = schema.source.data.properties
