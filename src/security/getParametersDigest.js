@@ -5,10 +5,11 @@ const { stringify }  = require('querystring')
 const { createHash } = require('crypto')
 
 const getParametersDigest = ({ mutation, ...query }) => {
+  const hasQuery   = Object.keys(query).length > 0
   const parameters = {}
 
-  /* istanbul ignore else */
-  if (query) {
+  /* istanbul ignore next */
+  if (hasQuery) {
     parameters.query = stringify(query)
   }
 
