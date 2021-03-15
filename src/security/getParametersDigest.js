@@ -4,21 +4,24 @@ const canonicalize   = require('canonicalize')
 const { stringify }  = require('querystring')
 const { createHash } = require('crypto')
 
-const getParametersDigest = ({ mutation, ...query }) => {
+/* istanbul ignore next */
+const getParametersDigest = (parameters = {}) => {
+  const { mutation, ...query } = parameters
+
   const hasQuery   = Object.keys(query).length > 0
-  const parameters = {}
+  const _parameters = {}
 
   /* istanbul ignore next */
   if (hasQuery) {
-    parameters.query = stringify(query)
+    _parameters.query = stringify(query)
   }
 
   /* istanbul ignore else */
   if (mutation) {
-    parameters.mutation = mutation
+    _parameters.mutation = mutation
   }
 
-  const canonized = canonicalize(parameters)
+  const canonized = canonicalize(_parameters)
   const digest = createHash('sha256').update(canonized).digest().toString('hex')
 
   return digest
