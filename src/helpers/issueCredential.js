@@ -1,5 +1,7 @@
 'use strict'
 
+const get          = require('lodash.get')
+const { ulid }     = require('ulid')
 const { Identity } = require('@kravc/identity')
 const canonicalize = require('canonicalize')
 const { Schema, CredentialFactory } = require('@kravc/schema')
@@ -11,8 +13,9 @@ const issueCredential = async (payload, options) => {
     context,
     validator,
     issuerSeedHex,
-    getCredentialId,
-    credentialTypeUri
+    getHolderId       = (context, payload) => get(context, 'identity.id', 'did:key:EXAMPLE_HOLDER_ID'), // eslint-disable-line
+    getCredentialId   = (context, payload) => 'https://example.com/credentials/' + ulid(), // eslint-disable-line
+    credentialTypeUri = `https://example.com/schemas/${schema.id}`
   } = options
 
   let referenceIds     = validator.getReferenceIds(schema.id)
@@ -41,14 +44,19 @@ const issueCredential = async (payload, options) => {
     return new Schema(source, id, vocabUri)
   })
 
-  const identity = await Identity.fromSeed(issuerSeedHex)
-  const factory  = new CredentialFactory(credentialTypeUri, types)
+  const factory = new CredentialFactory(credentialTypeUri, types)
 
-  const id = getCredentialId(payload)
-  const { identity: { id: holderId } } = context
+  const id       = getCredentialId(context, payload)
+  const holderId = getHolderId(context, payload)
 
-  const credential = await factory.createCredential(id, holderId, payload)
-  const verifiableCredential = await identity.issue(credential)
+  let verifiableCredential = await factory.createCredential(id, holderId, payload)
+
+  /* istanbul ignore else */
+  if (issuerSeedHex) {
+    const identity = await Identity.fromSeed(issuerSeedHex)
+    verifiableCredential = await identity.issue(verifiableCredential)
+  }
+
   const verifiableCredentialJson = canonicalize(verifiableCredential)
 
   return verifiableCredentialJson
