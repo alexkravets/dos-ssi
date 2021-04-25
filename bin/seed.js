@@ -2,12 +2,11 @@
 
 'use strict'
 
-const crypto = require('crypto')
-
-const SEED_LENGTH = 32
+const crypto       = require('crypto')
+const { Identity } = require('@kravc/identity')
 
 const seed = () => {
-  const seedHex = crypto.randomBytes(SEED_LENGTH).toString('hex')
+  const seedHex = crypto.randomBytes(Identity.SEED_LENGTH).toString('hex')
   console.log(seedHex)
 }
 

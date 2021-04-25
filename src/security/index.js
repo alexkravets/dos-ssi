@@ -1,9 +1,9 @@
 'use strict'
 
-const DidAuthorization    = require('./DidAuthorization')
-const getParametersDigest = require('./getParametersDigest')
+const verifyProof      = require('./verifyProof')
+const DidAuthorization = require('./DidAuthorization')
 
 module.exports = {
-  DidAuthorization,
-  getParametersDigest
+  verifyProof,
+  DidAuthorization
 }

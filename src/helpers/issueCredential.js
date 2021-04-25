@@ -51,7 +51,6 @@ const issueCredential = async (payload, options) => {
 
   let verifiableCredential = await factory.createCredential(id, holderId, payload)
 
-  /* istanbul ignore else */
   if (issuerSeedHex) {
     const identity = await Identity.fromSeed(issuerSeedHex)
     verifiableCredential = await identity.issue(verifiableCredential)

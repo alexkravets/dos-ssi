@@ -1,25 +1,52 @@
 'use strict'
 
-const service               = require('examples/accounts')
-const { expect }            = require('chai')
-const { Identity }          = require('@kravc/identity')
-const DidAuthorization      = require('./DidAuthorization')
+const service          = require('example')
+const { expect }       = require('chai')
+const { Identity }     = require('@kravc/identity')
+const canonicalize     = require('canonicalize')
+const { createHash }   = require('crypto')
+const DidAuthorization = require('./DidAuthorization')
+const createAuthorization   = require('../helpers/createAuthorization')
 const { test: { execute } } = require('@kravc/dos')
-const { test: { createDidAuthToken } } = require('src')
 
 const exec = execute(service)
 
-const CLIENT_SEED = '72ff16adfaa40ccdf8a8e5e0a53612c621da522d2e49bc4e352dece23f30bc63'
+const identity = '72ff16adfaa40ccdf8a8e5e0a53612c621da522d2e49bc4e352dece23f30bc63'
+
+const getAuthorization = async (domain, parameters) => {
+  const _identity = await Identity.fromSeed(identity)
+
+  const proofOptions = {}
+
+  if (domain) {
+    proofOptions.domain = domain
+  }
+
+  if (parameters) {
+    const canonicalizedParameters = canonicalize(parameters)
+    const challenge = createHash('sha256').update(canonicalizedParameters).digest().toString('hex')
+
+    proofOptions.challenge = challenge
+  }
+
+  const jwt = await _identity.createPresentation([], { format: 'jwt', proofOptions })
+
+  return jwt
+}
 
 describe('DidAuthorization', () => {
+  let requirementInstance
+
+  before(() => {
+    const requirement = DidAuthorization.createRequirement()
+    const options = requirement.DidAuthorization
+
+    requirementInstance = new requirement.DidAuthorization.klass(options)
+  })
+
   describe('createRequirement(options = {})', () => {
     it('creates requirement with default verification methods', async () => {
-      const requirement = DidAuthorization.createRequirement()
-
-      const options = requirement.DidAuthorization
-      const requirementInstance = new requirement.DidAuthorization.klass(options)
-
-      expect(requirementInstance._verifyAccess()).to.be.true
+      expect(requirementInstance._verifyAccess()).to.eql([ true ])
     })
   })
 
@@ -30,8 +57,26 @@ describe('DidAuthorization', () => {
       }
     }
 
+    it('verifies signed HTTP requests', async () => {
+      const operationId   = 'CreateAccountCredential'
+      const authorization = await getAuthorization(`${service.baseUrl}${operationId}`, parameters)
+
+      const context = {
+        url:      `${service.baseUrl}${operationId}`,
+        query:    {},
+        baseUrl:  service.baseUrl,
+        headers:  { authorization },
+        bodyJson: canonicalize(parameters),
+        operationId
+      }
+
+      const { isAuthorized } = await requirementInstance.verify(context)
+
+      expect(isAuthorized).to.be.true
+    })
+
     it('throws "UnauthorizedError" if authorization header missing', async () => {
-      const { statusCode, result: { error } } = await exec('CreateAccount', parameters)
+      const { statusCode, result: { error } } = await exec('CreateAccountCredential', parameters)
 
       expect(statusCode).to.eql(401)
       expect(error.code).to.eql('UnauthorizedError')
@@ -39,36 +84,104 @@ describe('DidAuthorization', () => {
     })
 
     it('throws "UnauthorizedError" if token verification failed', async () => {
-      const authorization = 'BAD_TOKEN'
-      const { statusCode, result: { error } } = await exec('CreateAccount', parameters, { authorization })
+      const authorization = 'INVALID_TOKEN'
+      const { statusCode, result: { error } } = await exec('CreateAccountCredential', parameters, { authorization })
 
       expect(statusCode).to.eql(401)
       expect(error.code).to.eql('UnauthorizedError')
+      expect(error.message).to.include('Presentation verification error:')
     })
 
-    it('throws "UnauthorizedError" if challenge mismatch', async () => {
-      const identity  = await Identity.fromSeed(CLIENT_SEED)
-      const challenge = 'BAD_CHALLENGE'
+    it('throws "UnauthorizedError" if no proof domain', async () => {
+      const authorization = await getAuthorization(null, parameters)
+      const { statusCode, result: { error } } = await exec('CreateAccountCredential', parameters, { authorization })
 
-      const proofOptions = {
-        domain: 'example.com',
-        challenge
+      expect(statusCode).to.eql(401)
+      expect(error.code).to.eql('UnauthorizedError')
+      expect(error.message).to.eql('Presentation proof should include domain')
+    })
+
+    it('throws "UnauthorizedError" if proof domain mismatch', async () => {
+      const authorization = await getAuthorization('https://invalid.domain.com', parameters)
+      const { statusCode, result: { error } } = await exec('CreateAccountCredential', parameters, { authorization })
+
+      expect(statusCode).to.eql(401)
+      expect(error.code).to.eql('UnauthorizedError')
+      expect(error.message).to.include('Presentation proof domain should start with')
+    })
+
+    it('throws "UnauthorizedError" if request url doesn\'t match proof domain', async () => {
+      const operationId   = 'CreateAccountCredential'
+      const authorization = await getAuthorization(`${service.baseUrl}${operationId}`, parameters)
+
+      const context = {
+        url:     `https://other.domain.com/${operationId}`,
+        query:   {},
+        baseUrl: service.baseUrl,
+        headers: { authorization },
+        operationId
       }
 
-      const authorization = await identity.createPresentation([], { format: 'jwt', proofOptions })
-      const { statusCode, result: { error } } = await exec('CreateAccount', parameters, { authorization })
+      const { isAuthorized, error } = await requirementInstance.verify(context)
+
+      expect(isAuthorized).to.be.false
+      expect(error.message).to.eql('Request URL doesn\'t match presentation proof domain')
+    })
+
+    it('throws "UnauthorizedError" if no proof challenge', async () => {
+      const operationId   = 'CreateAccountCredential'
+      const authorization = await getAuthorization(`${service.baseUrl}${operationId}`)
+
+      const context = {
+        url:      `${service.baseUrl}${operationId}`,
+        query:    {},
+        baseUrl:  service.baseUrl,
+        headers:  { authorization },
+        bodyJson: JSON.stringify(parameters),
+        operationId
+      }
+
+      const { isAuthorized, error } = await requirementInstance.verify(context)
+
+      expect(isAuthorized).to.be.false
+      expect(error.message).to.eql('Presentation proof should include challenge, sha256 from body JSON')
+    })
+
+    it('throws "UnauthorizedError" if request body doesn\'t match proof challenge', async () => {
+      const operationId   = 'CreateAccountCredential'
+      const authorization = await getAuthorization(`${service.baseUrl}${operationId}`, { ...parameters, extra: 'parameter' })
+
+      const context = {
+        url:      `${service.baseUrl}${operationId}`,
+        query:    {},
+        baseUrl:  service.baseUrl,
+        headers:  { authorization },
+        bodyJson: JSON.stringify(parameters),
+        operationId
+      }
+
+      const { isAuthorized, error } = await requirementInstance.verify(context)
+
+      expect(isAuthorized).to.be.false
+      expect(error.message).to.eql('Request body JSON doesn\'t match presentation proof challenge')
+    })
+
+    it('throws "UnauthorizedError" if operation parameters doesn\'t match proof challenge', async () => {
+      const authorization = await getAuthorization(`${service.baseUrl}CreateAccountCredential`, { ...parameters, extra: 'parameter' })
+      const { statusCode, result: { error } } = await exec('CreateAccountCredential', parameters, { authorization })
 
       expect(statusCode).to.eql(401)
       expect(error.code).to.eql('UnauthorizedError')
-      expect(error.message).to.eql('Challenge mismatch')
+      expect(error.message).to.include('Operation parameters doesn\'t match presentation proof challenge')
     })
 
-    it('throws "AccessDeniedError" if verification method failed', async () => {
-      const authorization = await createDidAuthToken(CLIENT_SEED, parameters)
-      const { statusCode, result: { error } } = await exec('CreateAccount', parameters, { authorization })
+    it('throws "AccessDeniedError" if access verification method failed', async () => {
+      const authorization = await createAuthorization(identity, service.baseUrl, 'CreateAccountCredential', parameters)
+      const { statusCode, result: { error } } = await exec('CreateAccountCredential', parameters, { authorization })
 
       expect(statusCode).to.eql(403)
       expect(error.code).to.eql('AccessDeniedError')
+      expect(error.message).to.eql('Access denied')
     })
   })
 })

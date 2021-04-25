@@ -1,27 +1,23 @@
 'use strict'
 
-const service      = require('examples/accounts')
+const service      = require('example')
 const { expect }   = require('chai')
+const { Create }   = require('@kravc/dos')
 const { Identity } = require('@kravc/identity')
-const { Create, test: { execute } } = require('@kravc/dos')
-const { Credential, test: { createDidAuthToken } } = require('src')
+const { execute, Credential } = require('src')
 
-const exec = execute(service)
-
-const CLIENT_SEED = '72ff16adfaa40ccdf8a8e5e0a53612c621da522d2e49bc4e352dece23f30bc63'
+const exec     = execute(service)
+const identity = 'a8ae17cdfa9f3e9bca58e471be3d4dc964735b10edb41e8013b2818350a2c0a5'
 
 describe('Credential(Operation, options)', () => {
   it('extends operation output with verified credential JSON format', async () => {
-    const domain = 'example.com'
     const parameters = {
       mutation: {
         username: 'CAHTEP'
       }
     }
 
-    const authorization = await createDidAuthToken(CLIENT_SEED, parameters, { domain })
-
-    const { statusCode, result } = await exec('CreateAccount', parameters, { authorization })
+    const { statusCode, result } = await exec(identity, 'CreateAccountCredential', parameters)
     expect(statusCode).to.eql(201)
     expect(result.verifiableCredentialJson).to.exist
 
@@ -34,18 +30,11 @@ describe('Credential(Operation, options)', () => {
     expect(credentialSubject.createdAt).to.exist
   })
 
-  it('supports operation embeded schema output', async () => {
-    const Account     = require('examples/accounts/components/Account')
-    const { ulid }    = require('ulid')
+  it('supports operation embeded schema output & skips credential signing', async () => {
     const { Service } = require('@kravc/dos')
+    const AccountCredential = require('example/components/AccountCredential')
 
-    const options = {
-      issuerSeedHex:     'ad5bc1d9bb775e986b7bac4be2ac8baf570ed763eb137e9d453cfa7531c1770e',
-      getCredentialId:   () => 'https://example.com/credentials/' + ulid(),
-      credentialTypeUri: 'https://example.com/schema/AccountV1'
-    }
-
-    class CreateAccount extends Credential(Create(Account), options) {
+    class IssueAccountCredential extends Credential(Create(AccountCredential)) {
       static get mutation() {
         return super.mutation.only([ 'username' ])
       }
@@ -63,15 +52,15 @@ describe('Credential(Operation, options)', () => {
       }
 
       before(parameters) {
-        this.context.identity = { id: 'did:HOLDER_ID'}
+        this.context.identity = { id: 'did:CUSTOM_HOLDER_ID' }
         return parameters
       }
     }
 
-    const URL = 'https://example.com'
-    const api = [ Account, CreateAccount ]
+    const URL = 'https://example.com/'
+    const api = [ AccountCredential, IssueAccountCredential ]
 
-    const service = new Service(api, URL, '/examples/accounts')
+    const service = new Service(api, URL, '/example')
     const exec = execute(service)
 
     const parameters = {
@@ -80,16 +69,9 @@ describe('Credential(Operation, options)', () => {
       }
     }
 
-    const { statusCode, result } = await exec('CreateAccount', parameters)
+    const client = await Identity.fromSeed(identity)
+    const { statusCode, result } = await exec(client, 'IssueAccountCredential', parameters)
     expect(statusCode).to.eql(201)
     expect(result.verifiableCredentialJson).to.exist
-
-    const { verifiableCredentialJson } = result
-    const credential = await Identity.verify(verifiableCredentialJson)
-
-    const { credentialSubject } = credential
-    expect(credentialSubject.id).to.exist
-    expect(credentialSubject.username).to.eql('Electronic')
-    expect(credentialSubject.createdAt).to.not.exist
   })
 })

@@ -1,11 +1,13 @@
 'use strict'
 
-const test       = require('./test')
+const execute    = require('./helpers/execute')
 const security   = require('./security')
 const Credential = require('./Credential')
+const createAuthorization = require('./helpers/createAuthorization')
 
 module.exports = {
+  execute,
+  security,
   Credential,
-  test,
-  security
+  createAuthorization
 }

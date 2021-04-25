@@ -1,25 +1,13 @@
 'use strict'
 
 const { errors }   = require('@kravc/dos')
+const verifyProof  = require('./verifyProof')
 const { Identity } = require('@kravc/identity')
-const getParametersDigest = require('./getParametersDigest')
 
 const {
   AccessDeniedError,
   UnauthorizedError
 } = errors
-
-const verifyAccess = () => true
-
-const verifyChallenge = (context, payload) => {
-  const { query, mutation } = context
-  const parameters = { ...query, mutation }
-
-  const challenge = getParametersDigest(parameters)
-  const isChallengeOk = challenge === payload.vp.proof.challenge
-
-  return isChallengeOk
-}
 
 class DidAuthorization {
   static createRequirement(options = {}) {
@@ -53,49 +41,49 @@ class DidAuthorization {
   }
 
   constructor({
-    accessVerificationMethod    = verifyAccess,
-    challengeVerificationMethod = verifyChallenge
+    proofVerificationMethod  = verifyProof,
+    accessVerificationMethod = () => [ true ]
   }) {
-    this._verifyAccess    = accessVerificationMethod
-    this._verifyChallenge = challengeVerificationMethod
+    this._verifyProof  = proofVerificationMethod
+    this._verifyAccess = accessVerificationMethod
   }
 
   async verify(context) {
-    const { authorization: token } = context.headers
+    const { authorization } = context.headers
 
-    if (!token) {
+    if (!authorization) {
       const error = new UnauthorizedError('Authorization header is missing')
       return { isAuthorized: false, error }
     }
 
-    let payload
+    let tokenPayload
 
     try {
-      payload = await Identity.verify(token)
+      tokenPayload = await Identity.verify(authorization)
 
     } catch (_error) {
       const { message } = _error
-      const error = new UnauthorizedError(message)
+      const error = new UnauthorizedError(`Presentation verification error: ${message}`)
 
       return { isAuthorized: false, error }
     }
 
-    const isChallengeOk = this._verifyChallenge(context, payload)
+    const [ isProofOk, proofErrorMessage ] = this._verifyProof(context, tokenPayload)
 
-    if (!isChallengeOk) {
-      const error = new UnauthorizedError('Challenge mismatch')
+    if (!isProofOk) {
+      const error = new UnauthorizedError(proofErrorMessage)
 
       return { isAuthorized: false, error }
     }
 
-    const isAuthorized = this._verifyAccess(payload)
+    const [ hasAccess, accessErrorMessage ] = await this._verifyAccess(context, tokenPayload)
 
-    if (!isAuthorized) {
-      const error = new AccessDeniedError()
+    if (!hasAccess) {
+      const error = new AccessDeniedError(accessErrorMessage)
       return { isAuthorized: false, error }
     }
 
-    const presentation   = payload.vp
+    const presentation   = tokenPayload.vp
     const { holder: id } = presentation
 
     return { isAuthorized: true, id, accountId: id, presentation }
