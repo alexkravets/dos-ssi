@@ -1,6 +1,5 @@
 'use strict'
 
-
 const execute             = require('./helpers/execute')
 const security            = require('./security')
 const Credential          = require('./Credential')

@@ -62,10 +62,10 @@ describe('DidAuthorization', () => {
       const authorization = await getAuthorization(`${service.baseUrl}${operationId}`, parameters)
 
       const context = {
-        url:      `${service.baseUrl}${operationId}`,
         query:    {},
         baseUrl:  service.baseUrl,
         headers:  { authorization },
+        httpPath: `/${operationId}`,
         bodyJson: canonicalize(parameters),
         operationId
       }
@@ -115,10 +115,10 @@ describe('DidAuthorization', () => {
       const authorization = await getAuthorization(`${service.baseUrl}${operationId}`, parameters)
 
       const context = {
-        url:     `https://other.domain.com/${operationId}`,
-        query:   {},
-        baseUrl: service.baseUrl,
-        headers: { authorization },
+        query:    {},
+        baseUrl:  service.baseUrl,
+        headers:  { authorization },
+        httpPath: `/${operationId}1`,
         operationId
       }
 
@@ -128,15 +128,33 @@ describe('DidAuthorization', () => {
       expect(error.message).to.eql('Request URL doesn\'t match presentation proof domain')
     })
 
+    it('throws "UnauthorizedError" if request query parameters do not match proof domain', async () => {
+      const operationId   = 'CreateAccountCredential'
+      const authorization = await getAuthorization(`${service.baseUrl}${operationId}`, parameters)
+
+      const context = {
+        query:    { extra: 'parameter' },
+        baseUrl:  service.baseUrl,
+        headers:  { authorization },
+        httpPath: `/${operationId}`,
+        operationId
+      }
+
+      const { isAuthorized, error } = await requirementInstance.verify(context)
+
+      expect(isAuthorized).to.be.false
+      expect(error.message).to.eql('Request query parameters do not match presentation proof domain')
+    })
+
     it('throws "UnauthorizedError" if no proof challenge', async () => {
       const operationId   = 'CreateAccountCredential'
       const authorization = await getAuthorization(`${service.baseUrl}${operationId}`)
 
       const context = {
-        url:      `${service.baseUrl}${operationId}`,
         query:    {},
         baseUrl:  service.baseUrl,
         headers:  { authorization },
+        httpPath: `/${operationId}`,
         bodyJson: JSON.stringify(parameters),
         operationId
       }
@@ -152,10 +170,10 @@ describe('DidAuthorization', () => {
       const authorization = await getAuthorization(`${service.baseUrl}${operationId}`, { ...parameters, extra: 'parameter' })
 
       const context = {
-        url:      `${service.baseUrl}${operationId}`,
         query:    {},
         baseUrl:  service.baseUrl,
         headers:  { authorization },
+        httpPath: `/${operationId}`,
         bodyJson: JSON.stringify(parameters),
         operationId
       }
@@ -172,7 +190,7 @@ describe('DidAuthorization', () => {
 
       expect(statusCode).to.eql(401)
       expect(error.code).to.eql('UnauthorizedError')
-      expect(error.message).to.include('Operation parameters doesn\'t match presentation proof challenge')
+      expect(error.message).to.include('Operation parameters do not match presentation proof challenge')
     })
 
     it('throws "AccessDeniedError" if access verification method failed', async () => {

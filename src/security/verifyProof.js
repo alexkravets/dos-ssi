@@ -1,6 +1,7 @@
 'use strict'
 
 const get            = require('lodash.get')
+const { parse }      = require('url')
 const canonicalize   = require('canonicalize')
 const { createHash } = require('crypto')
 
@@ -21,15 +22,27 @@ const verifyProof = (context, tokenPayload) => {
     return [ false, `Presentation proof domain should start with ${operationUrl}` ]
   }
 
-  const { url } = context
+  const { httpPath } = context
 
-  const isHttpRequest = !!url
+  const isHttpRequest = !!httpPath
 
   if (isHttpRequest) {
-    const isUrlMismatch = url !== domain
+    const url = baseUrl + ('/' + httpPath).replace('//', '')
+
+    const isUrlMismatch = !domain.includes(url)
 
     if (isUrlMismatch) {
       return [ false, 'Request URL doesn\'t match presentation proof domain' ]
+    }
+
+    const domainQuery      = parse(domain, true).query
+    const domainQueryJson  = canonicalize(domainQuery)
+    const contextQueryJson = canonicalize(context.query)
+
+    const isQueryMismatch = domainQueryJson !== contextQueryJson
+
+    if (isQueryMismatch) {
+      return [ false, 'Request query parameters do not match presentation proof domain' ]
     }
 
     const { bodyJson } = context
@@ -64,7 +77,7 @@ const verifyProof = (context, tokenPayload) => {
     const isChallengeMismatch = challenge !== digest
 
     if (isChallengeMismatch) {
-      return [ false, 'Operation parameters doesn\'t match presentation proof challenge' ]
+      return [ false, 'Operation parameters do not match presentation proof challenge' ]
     }
   }
 
