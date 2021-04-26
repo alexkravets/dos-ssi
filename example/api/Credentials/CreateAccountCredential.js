@@ -4,12 +4,11 @@ const { Create }               = require('@kravc/dos')
 const { AccountCredential }    = require('../../components')
 const { Credential, security } = require('src')
 
-const { DidAuthorization } = security
-const { options } = AccountCredential
-
 const DID_BLACKLIST = [
   'did:key:zQ3shSnvnzi7fihHWfYpGwwJ17fg5k9m9LphGZ2VYXCTqAdbs'
 ]
+
+const { options } = AccountCredential
 
 class CreateAccountCredential extends Credential(Create(AccountCredential), options) {
   static get security() {
@@ -23,9 +22,7 @@ class CreateAccountCredential extends Credential(Create(AccountCredential), opti
       return [ true ]
     }
 
-    const requirement = DidAuthorization.createRequirement({ accessVerificationMethod })
-
-    return [ requirement ]
+    return security({ accessVerificationMethod })
   }
 
   static get mutation() {

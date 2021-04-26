@@ -1,9 +1,9 @@
 'use strict'
 
-const verifyProof      = require('./verifyProof')
 const DidAuthorization = require('./DidAuthorization')
 
-module.exports = {
-  verifyProof,
-  DidAuthorization
+/* istanbul ignore next */
+module.exports = (options = {}) => {
+  const requirement = DidAuthorization.createRequirement(options)
+  return [ requirement ]
 }
