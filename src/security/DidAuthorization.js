@@ -68,7 +68,7 @@ class DidAuthorization {
       return { isAuthorized: false, error }
     }
 
-    const [ isProofOk, proofErrorMessage ] = this._verifyProof(context, tokenPayload)
+    const [ isProofOk, proofErrorMessage ] = await this._verifyProof(context, tokenPayload)
 
     if (!isProofOk) {
       const error = new UnauthorizedError(proofErrorMessage)
