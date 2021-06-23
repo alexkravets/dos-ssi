@@ -19,7 +19,7 @@ class DidAuthorization {
           in:   'header',
           type: 'apiKey',
           name: 'Authorization',
-          description: 'TODO: Add a link to presentation JWT example.'
+          description: 'Verifiable presentation token in JWT format'
         },
         klass: this,
         ...options
@@ -59,7 +59,8 @@ class DidAuthorization {
     let tokenPayload
 
     try {
-      tokenPayload = await Identity.verify(authorization)
+      const token  = authorization.replace('Bearer ', '')
+      tokenPayload = await Identity.verify(token)
 
     } catch (_error) {
       const { message } = _error
