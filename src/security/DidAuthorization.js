@@ -9,6 +9,8 @@ const {
   UnauthorizedError
 } = errors
 
+// TODO: Should include mechanics to prevent Replay attacks, by storing
+//       challenge in the database until presentation expires.
 class DidAuthorization {
   static createRequirement(options = {}) {
     const { name } = this
