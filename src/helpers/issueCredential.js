@@ -3,17 +3,27 @@
 const get          = require('lodash.get')
 const { ulid }     = require('ulid')
 const { Identity } = require('@kravc/identity')
+const generateSeed = require('./generateSeed')
 const canonicalize = require('canonicalize')
 const { Schema, CredentialFactory } = require('@kravc/schema')
 
+const getRandomHolderId = async () => {
+  const holderSeed = generateSeed()
+  const holder = await Identity.fromSeed(holderSeed)
+
+  return holder.id
+}
+
 const issueCredential = async (payload, options) => {
+  const randomHolderId = await getRandomHolderId()
+
   const {
     typesMap = {},
     schema,
     context,
     validator,
     issuerSeedHex,
-    getHolderId       = (context, payload) => get(context, 'identity.id', 'did:key:EXAMPLE_HOLDER_ID'), // eslint-disable-line
+    getHolderId       = (context, payload) => get(context, 'identity.id', randomHolderId), // eslint-disable-line
     getCredentialId   = (context, payload) => 'https://example.com/credentials/' + ulid(), // eslint-disable-line
     credentialTypeUri = `https://example.com/schemas/${schema.id}`
   } = options
